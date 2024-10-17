@@ -3,6 +3,7 @@ package dev.koshy.simbasample;
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -17,42 +18,43 @@ import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
 import dev.koshy.simbasample.databinding.ActivityMainBinding;
+import retrofit2.Retrofit;
 
 import android.view.Menu;
 import android.view.MenuItem;
+
+import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity {
 
     private AppBarConfiguration appBarConfiguration;
     private ActivityMainBinding binding;
-
     private AsyncInit asyncInit;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         // The Start of Execution of Custom Code
-        asyncInit = new AsyncInit();
-        SimbaJosh credentials = new SimbaJosh("e7OencHUVC3ivO4dpucF5BtZRKIEnBpMhfSaBjpC", "oKrTycNJOReLSQjfbeheY5n95e9U4EL3TSjngbEY4GVBXFV4PWqPD1LownECtb869qgZn9xtvv02baRpeNQiRrXJETI16WM046Ijcvy10hPlZMQeNS5uvkZMX8ZrrmNr");
+        SimbaJosh simbaJosh = new SimbaJosh("e7OencHUVC3ivO4dpucF5BtZRKIEnBpMhfSaBjpC", "oKrTycNJOReLSQjfbeheY5n95e9U4EL3TSjngbEY4GVBXFV4PWqPD1LownECtb869qgZn9xtvv02baRpeNQiRrXJETI16WM046Ijcvy10hPlZMQeNS5uvkZMX8ZrrmNr");
 
-        // Example usage
-        credentials.sendApiRequest(new Callback<String>() {
+        simbaJosh.sendApiRequest(new Callback<ResponseBody>() {
             @Override
-            public void onResponse(Call<String> call, Response<String> response) {
-                Log.d("SimbaJosh", "RESPONSE RECEIVED");
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 if (response.isSuccessful()) {
-                    System.out.println("API Response: " + response.body());
-                        Log.d("SimbaJosh", response.body().toString());
+                    try {
+                        String responseBody = response.body().string();
+                        Log.d("MainActivity", "API Response: " + responseBody);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 } else {
-                    System.out.println("Failed API Call: " + response.message());
-                    Log.d("SimbaJosh", response.message().toString());
+                    Log.e("MainActivity", "API call failed: " + response.message());
                 }
             }
 
             @Override
-            public void onFailure(Call<String> call, Throwable t) {
-                Log.d("SimbaJosh", "ERROR");
-                t.printStackTrace();
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                Log.e("MainActivity", "API call error: " + t.getMessage());
             }
         });
 

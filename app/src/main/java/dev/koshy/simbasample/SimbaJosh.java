@@ -2,56 +2,70 @@ package dev.koshy.simbasample;
 
 import android.util.Log;
 
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-
 public class SimbaJosh {
     private String clientId;
     private String clientSecret;
-    private ApiService apiService;
+    private APIService apiService;
+    private AuthService authService;
     private AuthToken token;
 
     public SimbaJosh(String clientId, String clientSecret) {
         this.clientId = clientId;
         this.clientSecret = clientSecret;
-        this.apiService = RetrofitClient.getInstance().create(ApiService.class);
-    }
-
-    private String getBasicAuthenticationHeader() {
-        String valueToEncode = clientId + ":" + clientSecret;
-        return "Basic " + android.util.Base64.encodeToString(valueToEncode.getBytes(), android.util.Base64.NO_WRAP);
+        // Create the AuthService for authentication
+        this.authService = RetrofitClient.getAuthInstance(clientId, clientSecret).create(AuthService.class);
+        // APIService will be initialized after authentication
     }
 
     public void authenticate(Callback<AuthToken> callback) {
-        String authorizationHeader = getBasicAuthenticationHeader();
-        String grantType = "grant_type=client_credentials";
+        String grantType = "client_credentials";
+        Call<AuthToken> call = authService.authenticate(grantType);
+        call.enqueue(new Callback<AuthToken>() {
+            @Override
+            public void onResponse(Call<AuthToken> call, Response<AuthToken> response) {
+                if (response.isSuccessful()) {
+                    token = response.body();
+                    RetrofitClient.setAccessToken(token.accessToken);
+                    // Initialize APIService after setting the access token
+                    apiService = RetrofitClient.getInstance().create(APIService.class);
+                    callback.onResponse(call, response);
+                } else {
+                    Log.e("SimbaJosh", "Authentication failed: " + response.message());
+                    callback.onFailure(call, new Exception("Authentication failed: " + response.message()));
+                }
+            }
 
-        Call<AuthToken> call = apiService.authenticate(authorizationHeader, "application/x-www-form-urlencoded", grantType);
-        call.enqueue(callback);
+            @Override
+            public void onFailure(Call<AuthToken> call, Throwable t) {
+                Log.e("SimbaJosh", "Authentication error: " + t.getMessage());
+                callback.onFailure(call, t);
+            }
+        });
     }
 
-    public void sendApiRequest(Callback<String> callback) {
+    public void sendApiRequest(Callback<ResponseBody> callback) {
         Log.d("SimbaJosh", "sendApiRequest Called");
-        if (token == null || token.access_token.isEmpty()) {
+        if (token == null || token.accessToken == null || token.accessToken.isEmpty()) {
             authenticate(new Callback<AuthToken>() {
                 @Override
                 public void onResponse(Call<AuthToken> call, Response<AuthToken> response) {
-                    Log.d("SimbaJosh", "onResponse received for sendApiRequest");
                     if (response.isSuccessful()) {
-                        token = response.body();
-                        Log.d("SimbaJosh", "response.isSuccessful() received for sendApiRequest");
                         makeApiCall(callback);
                     } else {
-                        Log.d("SimbaJosh", "Authentication failed: " + response.message() + " " + response.code());
-                        System.out.println("Authentication failed: " + response.message());
+                        Log.e("SimbaJosh", "Authentication failed: " + response.message());
+                        callback.onFailure(null, new Exception("Authentication failed: " + response.message()));
                     }
                 }
 
                 @Override
                 public void onFailure(Call<AuthToken> call, Throwable t) {
-                    t.printStackTrace();
+                    Log.e("SimbaJosh", "Authentication error: " + t.getMessage());
+                    callback.onFailure(null, t);
                 }
             });
         } else {
@@ -59,10 +73,9 @@ public class SimbaJosh {
         }
     }
 
-    private void makeApiCall(Callback<String> callback) {
+    private void makeApiCall(Callback<ResponseBody> callback) {
         Log.d("SimbaJosh", "makeApiCall Called");
-        String authorizationHeader = "Bearer " + token.access_token;
-        Call<String> call = apiService.getFileCount(authorizationHeader);
+        Call<ResponseBody> call = apiService.getFileCount();
         call.enqueue(callback);
     }
 }

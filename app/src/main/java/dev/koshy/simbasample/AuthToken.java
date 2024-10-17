@@ -1,17 +1,16 @@
 package dev.koshy.simbasample;
 
+import com.google.gson.annotations.SerializedName;
+
 public class AuthToken {
-    public String access_token;
-    public int expires_in;
-    public String token_type;
+    @SerializedName("access_token")
+    public String accessToken;
+
+    @SerializedName("expires_in")
+    public int expiresIn;
+
+    @SerializedName("token_type")
+    public String tokenType;
+
     public String scope;
-
-    public AuthToken() {
-        access_token = "";
-    }
-
-    @Override
-    public String toString() {
-        return access_token;
-    }
 }
